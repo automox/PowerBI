@@ -1,13 +1,6 @@
 # PowerBI
 This repository stores templates and functional example scripts for use with PowerBI. The content provided in this repository contain no warranty and should be used at your own discretion.
 
----
-external help file:
-Module Name:
-online version: https://learn.microsoft.com/en-us/dotnet/api/system.net.httpstatuscode?view=net-8.0
-schema: 2.0.0
----
-
 # Get-AutomoxAPIObject
 
 ## SYNOPSIS
@@ -45,7 +38,6 @@ Get-AutomoxAPIObject -OrganizationID "YourOrganizationID" -APIKey "YourOrganizat
 ### EXAMPLE 2
 ```
 $GetAutomoxAPIObjectParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-```
 
 $GetAutomoxAPIObjectParameters.OrganizationID = "YourOrganizationID"
   $GetAutomoxAPIObjectParameters.APIKey = "YourAPIKey"
@@ -59,11 +51,11 @@ $GetAutomoxAPIObjectParameters.OrganizationID = "YourOrganizationID"
 $GetAutomoxAPIObjectResult = Get-AutomoxAPIObject @GetAutomoxAPIObjectParameters
 
 Write-Output -InputObject ($GetAutomoxAPIObjectResult)
+```
 
 ### EXAMPLE 3
 ```
 $GetAutomoxAPIObjectParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-```
 
 $GetAutomoxAPIObjectParameters.OrganizationID = "YourOrganizationID"
   $GetAutomoxAPIObjectParameters.APIKey = "YourAPIKey"
@@ -85,6 +77,7 @@ $GetAutomoxAPIObjectParameters.OrganizationID = "YourOrganizationID"
 $GetAutomoxAPIObjectResult = Get-AutomoxAPIObject @GetAutomoxAPIObjectParameters
 
 Write-Output -InputObject ($GetAutomoxAPIObjectResult)
+```
 
 ## PARAMETERS
 
