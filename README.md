@@ -1,13 +1,6 @@
 # PowerBI
 This repository stores templates and functional example scripts for use with PowerBI. The content provided in this repository contain no warranty and should be used at your own discretion.
 
----
-external help file:
-Module Name:
-online version: https://learn.microsoft.com/en-us/dotnet/api/system.net.httpstatuscode?view=net-8.0
-schema: 2.0.0
----
-
 # Get-AutomoxAPIObject
 
 ## SYNOPSIS
