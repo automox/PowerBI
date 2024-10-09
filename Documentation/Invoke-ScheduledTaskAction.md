@@ -34,7 +34,6 @@ This functiong greatly reduces the complexity of staging scripts on a device tha
 ### EXAMPLE 1
 ```
 [System.IO.FileInfo]$ScheduledTaskDefinitionPath = 'C:\YourPath\YourExportedScheduledTask.xml'
-```
 
 \[String\]$ScheduledTaskDefinition = \[System.IO.File\]::ReadAllText($ScheduledTaskDefinitionPath.FullName)
 
@@ -58,6 +57,7 @@ $InvokeScheduledTaskActionParameters = New-Object -TypeName 'System.Collections.
 $InvokeScheduledTaskActionResult = Invoke-ScheduledTaskAction @InvokeScheduledTaskActionParameters
 
 Write-Output -InputObject ($InvokeScheduledTaskActionResult)
+```
 
 ### EXAMPLE 2
 ```
