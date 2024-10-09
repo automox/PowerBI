@@ -1,10 +1,3 @@
----
-external help file:
-Module Name:
-online version:
-schema: 2.0.0
----
-
 # Get-AutomoxAPIData
 
 ## SYNOPSIS

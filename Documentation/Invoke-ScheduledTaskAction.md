@@ -1,10 +1,3 @@
----
-external help file:
-Module Name:
-online version: https://learn.microsoft.com/en-us/windows/win32/taskschd/schtasks
-schema: 2.0.0
----
-
 # Invoke-ScheduledTaskAction
 
 ## SYNOPSIS

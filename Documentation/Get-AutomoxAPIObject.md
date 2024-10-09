@@ -1,10 +1,3 @@
----
-external help file:
-Module Name:
-online version: https://learn.microsoft.com/en-us/dotnet/api/system.net.httpstatuscode?view=net-8.0
-schema: 2.0.0
----
-
 # Get-AutomoxAPIObject
 
 ## SYNOPSIS
