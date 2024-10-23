@@ -587,7 +587,7 @@ Switch (Test-ProcessElevationStatus)
 
                           {($_ -iin @('CreateScheduledTask'))}
                             {
-                                [System.IO.FileInfo]$ScheduledTaskTemplatePath = "$($ScriptDirectory.FullName)\ScheduledTasks\Template.xml"
+                                [System.IO.FileInfo]$ScheduledTaskTemplatePath = "$($ScriptDirectory.FullName)\ScheduledTasks\$($ScriptPath.BaseName).xml"
 
                                 Switch ([System.IO.File]::Exists($ScheduledTaskTemplatePath.FullName))
                                   {
