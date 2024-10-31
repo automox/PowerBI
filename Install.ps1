@@ -13,9 +13,6 @@
     .PARAMETER APIKey
     A valid Automox API key that is associated with the specified organization ID.
 
-    .PARAMETER ExecutionMode
-    A valid execution mode for script operation. Maybe any one of 'Execute', 'CreateScheduledTask', or 'RemoveScheduledTask'. By default, 'Execute' will be specified value.
-
     .PARAMETER ExportDirectory
     A valid directory where the API request data will be exported. If the directory does not exist, it will be automatically created.
 
@@ -53,26 +50,20 @@
 [CmdletBinding(SupportsShouldProcess=$True)]
   Param
     (        	                 
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [Alias('OID')]
         [System.String]$OrganizationID,
 
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [Alias('Key')]
         [System.String]$APIKey,
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-        [Alias('EM')]
-        [ValidateSet('Execute', 'CreateScheduledTask', 'RemoveScheduledTask')]
-        [System.String]$ExecutionMode,
-
-        [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
-        [Alias('ED')]
-        [System.IO.DirectoryInfo]$ExportDirectory,
+        [Alias('DD')]
+        [System.IO.DirectoryInfo]$DownloadDirectory,
                               
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
@@ -205,22 +196,19 @@ Switch (Test-ProcessElevationStatus)
                                                               }
                                                         }
 	            
-            #Determine default parameter value(s)       
+            #Determine default parameter value(s)
+              [String]$GithubScriptFolderName = "Get-AutomoxAPIData"
+                  
               Switch ($True)
                 {
-                    {([String]::IsNullOrEmpty($ExecutionMode) -eq $True) -or ([String]::IsNullOrWhiteSpace($ExecutionMode) -eq $True)}
+                    {([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
                       {
-                          [System.String]$ExecutionMode = 'Execute'
-                      }
-
-                    {([String]::IsNullOrEmpty($ExportDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($ExportDirectory) -eq $True)}
-                      {
-                          [System.IO.DirectoryInfo]$ExportDirectory = "$($Env:Public)\Documents\$($ScriptPath.BaseName)"
+                          [System.IO.DirectoryInfo]$DownloadDirectory = "$($Env:Public)\Documents\$($GithubScriptFolderName)"
                       }
     
                     {([String]::IsNullOrEmpty($LogDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($LogDirectory) -eq $True)}
                       {
-                          [System.IO.DirectoryInfo]$LogDirectory = "$($Env:Windir)\Logs\Software\$($ScriptPath.BaseName)"
+                          [System.IO.DirectoryInfo]$LogDirectory = "$($Env:Windir)\Logs\Software\$($GithubScriptFolderName)"
                       }       
                 }
 
@@ -375,264 +363,32 @@ Switch (Test-ProcessElevationStatus)
                   }
             #endregion
 
-            #Perform script action(s)
+            #region Perform script action(s)
               Try
-                {                                      
-                    $ScheduledTaskSettings = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-                      $ScheduledTaskSettings.Folder = "\Automox"
-                      $ScheduledTaskSettings.Name = $ScriptPath.BaseName
-                      $ScheduledTaskSettings.ScriptName = $ScriptPath.Name
-                      $ScheduledTaskSettings.Source = $ScriptDirectory.FullName
-                      $ScheduledTaskSettings.Destination = "$($Env:ProgramData)\ScheduledTasks\Automox\$([System.IO.Path]::GetFileNameWithoutExtension($ScheduledTaskSettings.ScriptName))"
-                
-                    Switch ($ExecutionMode)
-                      {    
-                          Default
-                            {
-                                $GetAutomoxAPIObjectCommandInfo = Get-Command -Name 'Get-AutomoxAPIObject'
-                
-                                $GetAutomoxAPIObjectParameterDictionary = $GetAutomoxAPIObjectCommandInfo.Parameters
-                
-                                $GetAutomoxAPIObjectRequiredParameters = $GetAutomoxAPIObjectCommandInfo.ParameterSets.Parameters | Where-Object -FilterScript {($_.IsMandatory -eq $True)} | Sort-Object -Property @('Name') -Unique
-                
-                                $AutomoxAPIEndpointList = $GetAutomoxAPIObjectParameterDictionary['Endpoint'].Attributes.ValidValues
-            
-                                $GetAutomoxAPIObjectParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-                                  $GetAutomoxAPIObjectParameters.OrganizationID = $OrganizationID
-                                  $GetAutomoxAPIObjectParameters.APIKey = $APIKey
-                                  $GetAutomoxAPIObjectParameters.Endpoint = 'orgs'
-                                  $GetAutomoxAPIObjectParameters.SubURI = "/$($OrganizationID)"
-                                  $GetAutomoxAPIObjectParameters.ContinueOnError = $False
-                                  $GetAutomoxAPIObjectParameters.Verbose = $True
-                              
-                                $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to retrieve the list of Automox organization(s) associated with organization ID $($OrganizationID). Please Wait..."
-                                Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                           
-                                $AutomoxOrganizationList = Get-AutomoxAPIObject @GetAutomoxAPIObjectParameters
-                
-                                $AutomoxOrganizationListCount = ($AutomoxOrganizationList | Measure-Object).Count
-                  
-                                $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - The Automox API request returned $($AutomoxOrganizationListCount) result(s)."
-                                Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                                      
-                                Switch ($AutomoxOrganizationListCount -gt 0)                                                                                                                                                                                                                                                                                                                                                                                                                 
-                                  {
-                                      {($_ -eq $True)}
-                                        {
-                                            $AutomoxOrganizationListCounter = 1
-                
-                                            For ($AutomoxOrganizationListIndex = 0; $AutomoxOrganizationListIndex -lt $AutomoxOrganizationListCount; $AutomoxOrganizationListIndex++)
-                                              {  
-                                                  Try
-                                                    {
-                                                        $AutomoxOrganization = $AutomoxOrganizationList[$AutomoxOrganizationListIndex]
-                            
-                                                        $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to process Automox organization $($AutomoxOrganizationListCounter) of $($AutomoxOrganizationListCount). Please Wait..."
-                                                        Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                        
-                                                        $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Organization Name: $($AutomoxOrganization.name)"
-                                                        Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                        
-                                                        $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Organization ID: $($AutomoxOrganization.id)"
-                                                        Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                          
-                                                        #region Create the API request object list
-                                                          $APIRequestObjectList = New-Object -TypeName 'System.Collections.Generic.List[System.Collections.Specialized.OrderedDictionary]'
-                                                        #endregion
-                                          
-                                                        #region Populate the API request object list
-                                      
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True
-                                                          $APIRequestObjectEntry.Endpoint = 'orgs'
-                                                          $APIRequestObjectEntry.SubURI = "/$($AutomoxOrganization.id)/packages"
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $False
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = 'Packages.json'
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
+                {                                              
+                    #region Download additional content from the specified Github repository
+                      $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
+	                      $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
+	                      $GetGitRepositoryListingParameters.RepositoryOwner = "automox"
+	                      $GetGitRepositoryListingParameters.RepositoryName = "powershell-sdk"
+	                      $GetGitRepositoryListingParameters.RepositoryPath = "$($GithubScriptFolderName)"
+	                      $GetGitRepositoryListingParameters.Download = $True
+	                      $GetGitRepositoryListingParameters.DestinationDirectory = $DownloadDirectory.FullName
+                        $GetGitRepositoryListingParameters.Force = $False
+	                      $GetGitRepositoryListingParameters.ContinueOnError = $False
+	                      $GetGitRepositoryListingParameters.Verbose = $True
 
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True
-                                                          $APIRequestObjectEntry.Endpoint = 'servers'
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $True
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = "DeviceList.json" 
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
+                      $GetGitRepositoryListingResult = Get-GitRepositoryListing @GetGitRepositoryListingParameters
 
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True  
-                                                          $APIRequestObjectEntry.Endpoint = 'servergroups'
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $False
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = 'DeviceGroups.json'
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
-
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True   
-                                                          $APIRequestObjectEntry.Endpoint = 'reports'
-                                                          $APIRequestObjectEntry.SubURI = "/prepatch"
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $False
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = 'Reports-Prepatch.json'
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
-
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True   
-                                                          $APIRequestObjectEntry.Endpoint = 'policystats'
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $False
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = 'PolicyStatistics.json'
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
-
-                                                        $APIRequestObjectEntry = [Ordered]@{}
-                                                          $APIRequestObjectEntry.Enabled = $True  
-                                                          $APIRequestObjectEntry.Endpoint = 'orgs'
-                                                          $APIRequestObjectEntry.SubURI = "/$($AutomoxOrganization.id)/packages"
-                                                          $APIRequestObjectEntry.RequestParameters = New-Object -TypeName 'System.Collections.Generic.List[System.String]'
-                                                            $APIRequestObjectEntry.RequestParameters.Add('awaiting=1')
-                                                          $APIRequestObjectEntry.RequestAssociatedData = $False
-                                                          $APIRequestObjectEntry.PropertyInclusionList = New-Object -TypeName 'System.Collections.Generic.List[System.Object]'
-                                                            $APIRequestObjectEntry.PropertyInclusionList.Add('*')
-                                                          $APIRequestObjectEntry.ExportFormat = 'JSON'
-                                                          $APIRequestObjectEntry.FileName = 'PackagesAwaitingDeployment.json'
-                                                        $APIRequestObjectList.Add($APIRequestObjectEntry)
-                                          
-                                                        #endregion
-                                          
-                                                        $APIRequestObjectListCount = ($APIRequestObjectList | Measure-Object).Count
-                
-                                                        $APIRequestObjectListCounter = 1
-                
-                                                        For ($APIRequestObjectListIndex = 0; $APIRequestObjectListIndex -lt $APIRequestObjectListCount; $APIRequestObjectListIndex++)
-                                                          {
-                                                              Try
-                                                                {
-                                                                    $APIRequest = $APIRequestObjectList[$APIRequestObjectListIndex]
-                                                      
-                                                                    Switch ($APIRequest.Enabled)                                                                                                                                                           
-                                                                      {
-                                                                          {($_ -eq $True)}
-                                                                            {
-                                                                                $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to process Automox API endpoint $($APIRequestObjectListCounter) of $($APIRequestObjectListCount). Please Wait..."
-                                                                                Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                        
-                                                                                $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - API Endpoint: $($APIRequest.Endpoint)"
-                                                                                Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-
-                                                                                $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Enabled: $($APIRequest.Enabled)"
-                                                                                Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-                                                      
-                                                                                $GetAutomoxAPIObjectParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-                                                                                  $GetAutomoxAPIObjectParameters.OrganizationID = $AutomoxOrganization.id
-                                                                                  $GetAutomoxAPIObjectParameters.APIKey = $APIKey
-                                                                                  $GetAutomoxAPIObjectParameters.Export = $True
-                                                                                  $GetAutomoxAPIObjectParameters.ExportDirectory = $ExportDirectory.FullName
-                                                                                  $GetAutomoxAPIObjectParameters.Encoding = [System.Text.Encoding]::Default
-                                                                                  $GetAutomoxAPIObjectParameters.AppendDate = $False
-                                                                                  $GetAutomoxAPIObjectParameters.ContinueOnError = $False
-                                                                                  $GetAutomoxAPIObjectParameters.Verbose = $True
-                                                        
-                                                                                ForEach ($APIRequestParameter In $APIRequest.GetEnumerator())
-                                                                                  {
-                                                                                      Switch ($GetAutomoxAPIObjectParameterDictionary.ContainsKey($APIRequestParameter.Key))
-                                                                                        {
-                                                                                            {($_ -eq $True)}
-                                                                                              {
-                                                                                                  $GetAutomoxAPIObjectParameters.$($APIRequestParameter.Key) = $APIRequestParameter.Value
-                                                                                              }
-                                                                                        }
-                                                                                  }
-
-                                                                                $GetAutomoxAPIObjectResult = Get-AutomoxAPIObject @GetAutomoxAPIObjectParameters
-                                                                            }
-                                                              
-                                                                          Default
-                                                                            {
-                                                                  
-                                                                            }
-                                                                      }
-                                                                }
-                                                              Catch
-                                                                {
-                                                                    $ErrorHandlingDefinition.Invoke(2, $ContinueOnError.IsPresent)
-                                                                }
-                                                              Finally
-                                                                {
-                                                                    $APIRequestObjectListCounter++
-                                                                }
-                                                          }
-                                                    }   
-                                                  Catch
-                                                    {
-                                                        $ErrorHandlingDefinition.Invoke(2, $ContinueOnError.IsPresent)
-                                                    } 
-                                                  Finally
-                                                    {
-                            
-                                                    }
-                                              }
-                                        }
-                                  }
-                            }
-
-                          {($_ -iin @('CreateScheduledTask'))}
-                            {
-                                [System.IO.FileInfo]$ScheduledTaskTemplatePath = "$($ScriptDirectory.FullName)\ScheduledTasks\$($ScriptPath.BaseName).xml"
-
-                                Switch ([System.IO.File]::Exists($ScheduledTaskTemplatePath.FullName))
-                                  {
-                                      {($_ -eq $True)}
-                                        {
-                                            $ScheduledTaskTemplateContent = [System.IO.File]::ReadAllText($ScheduledTaskTemplatePath.FullName)
-                            
-                                            $InvokeScheduledTaskActionParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-	                                            $InvokeScheduledTaskActionParameters.Create = $True
-	                                            $InvokeScheduledTaskActionParameters.ScheduledTaskDefinition = $ScheduledTaskTemplateContent
-	                                            $InvokeScheduledTaskActionParameters.Force = $True
-	                                            $InvokeScheduledTaskActionParameters.ScheduledTaskFolder = $ScheduledTaskSettings.Folder
-	                                            $InvokeScheduledTaskActionParameters.ScheduledTaskName = $ScheduledTaskSettings.Name
-	                                            $InvokeScheduledTaskActionParameters.Source = $ScheduledTaskSettings.Source
-	                                            $InvokeScheduledTaskActionParameters.Destination = $ScheduledTaskSettings.Destination
-	                                            $InvokeScheduledTaskActionParameters.ScriptName = $ScriptPath.Name
-	                                            $InvokeScheduledTaskActionParameters.ScriptParameters = New-Object -TypeName 'System.Collections.Generic.List[System.String]'
-		                                            $InvokeScheduledTaskActionParameters.ScriptParameters.Add("-OrganizationID '$($OrganizationID)'")
-                                                $InvokeScheduledTaskActionParameters.ScriptParameters.Add("-APIKey '$($APIKey)'")
-                                                $InvokeScheduledTaskActionParameters.ScriptParameters.Add("-ExecutionMode 'Execute'")
-                                                $InvokeScheduledTaskActionParameters.ScriptParameters.Add("-LogDirectory '$($LogDirectory.FullName)\ScheduledTask'")
-	                                            $InvokeScheduledTaskActionParameters.Stage = $True
-	                                            $InvokeScheduledTaskActionParameters.Execute = $True
-	                                            $InvokeScheduledTaskActionParameters.ContinueOnError = $False
-	                                            $InvokeScheduledTaskActionParameters.Verbose = $True
-
-                                            $InvokeScheduledTaskActionResult = Invoke-ScheduledTaskAction @InvokeScheduledTaskActionParameters
-                                        }
-                                  }
-                            }
-
-                          {($_ -iin @('RemoveScheduledTask'))}
-                            {
-                                $InvokeScheduledTaskActionParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-                                  $InvokeScheduledTaskActionParameters.Remove = $True
-	                                $InvokeScheduledTaskActionParameters.ScheduledTaskFolder = $ScheduledTaskSettings.Folder
-	                                $InvokeScheduledTaskActionParameters.ScheduledTaskName = $ScheduledTaskSettings.Name
-	                                $InvokeScheduledTaskActionParameters.Source = $ScheduledTaskSettings.Destination
-	                                $InvokeScheduledTaskActionParameters.ContinueOnError = $False
-	                                $InvokeScheduledTaskActionParameters.Verbose = $True
-
-                                $InvokeScheduledTaskActionResult = Invoke-ScheduledTaskAction @InvokeScheduledTaskActionParameters
-                            }
-                      }
-                                        
+                      Switch ($Null -ine $GetGitRepositoryListingResult)
+                        {
+                            {($_ -eq $True)}
+                              {
+                                  $GetGitRepositoryListingResult.RepositoryList
+                              }
+                        }
+                    #endregion
+                                                                                   
                     $Script:LASTEXITCODE = $TerminationCodes.Success[0]
                 }
               Catch
@@ -642,7 +398,7 @@ Switch (Test-ProcessElevationStatus)
               Finally
                 {                
                     Try
-                      {
+                      {                       
                           #Determine the date and time the function completed execution
                             $ScriptEndTime = (Get-Date)
 
@@ -657,7 +413,7 @@ Switch (Test-ProcessElevationStatus)
             
                           $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Exiting script `"$($ScriptPath.FullName)`" with exit code $($Script:LASTEXITCODE)."
                           Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
-            
+
                           Stop-Transcript
                       }
                     Catch
@@ -665,6 +421,7 @@ Switch (Test-ProcessElevationStatus)
             
                       }
                 }
+            #endregion
         }
 
       {($_ -eq $False)}
