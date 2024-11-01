@@ -196,19 +196,17 @@ Switch (Test-ProcessElevationStatus)
                                                               }
                                                         }
 	            
-            #Determine default parameter value(s)
-              [String]$GithubScriptFolderName = "Get-AutomoxAPIData"
-                  
+            #Determine default parameter value(s)                  
               Switch ($True)
                 {
                     {([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
                       {
-                          [System.IO.DirectoryInfo]$DownloadDirectory = "$($Env:Public)\Documents\$($GithubScriptFolderName)"
+                          [System.IO.DirectoryInfo]$DownloadDirectory = "$($Env:Public)\Documents\Get-AutomoxAPIData"
                       }
     
                     {([String]::IsNullOrEmpty($LogDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($LogDirectory) -eq $True)}
                       {
-                          [System.IO.DirectoryInfo]$LogDirectory = "$($Env:Windir)\Logs\Software\$($GithubScriptFolderName)"
+                          [System.IO.DirectoryInfo]$LogDirectory = "$($DownloadDirectory.FullName)\Logs"
                       }       
                 }
 
@@ -371,9 +369,12 @@ Switch (Test-ProcessElevationStatus)
 	                      $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
 	                      $GetGitRepositoryListingParameters.RepositoryOwner = "automox"
 	                      $GetGitRepositoryListingParameters.RepositoryName = "powershell-sdk"
-	                      $GetGitRepositoryListingParameters.RepositoryPath = "$($GithubScriptFolderName)"
-	                      $GetGitRepositoryListingParameters.Download = $True
-	                      $GetGitRepositoryListingParameters.DestinationDirectory = $DownloadDirectory.FullName
+	                      $GetGitRepositoryListingParameters.RepositoryPath = "Get-AutomoxAPIData"
+                        $GetGitRepositoryListingParameters.RepositoryBranch = "main"
+	                      $GetGitRepositoryListingParameters.DestinationDirectory = "$($DownloadDirectory.FullName)"
+                        $GetGitRepositoryListingParameters.Download = $False
+                        $GetGitRepositoryListingParameters.Recursive = $True
+                        $GetGitRepositoryListingParameters.Flatten = $False
                         $GetGitRepositoryListingParameters.Force = $False
 	                      $GetGitRepositoryListingParameters.ContinueOnError = $False
 	                      $GetGitRepositoryListingParameters.Verbose = $True
@@ -384,7 +385,9 @@ Switch (Test-ProcessElevationStatus)
                         {
                             {($_ -eq $True)}
                               {
+                                  
                                   $GetGitRepositoryListingResult.RepositoryList
+                                  
                               }
                         }
                     #endregion

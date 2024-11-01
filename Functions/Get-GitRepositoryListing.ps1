@@ -5,11 +5,14 @@ Function Get-GitRepositoryListing
     {
         <#
           .SYNOPSIS
-          A brief overview of what your function does
+          List or download files from public and private Git repositories.
           
           .DESCRIPTION
-          Slightly more detailed description of what your function does
+          Leverages the Github API to list the files within public and private Git repositories along with the capability to download the files whilst maintaining the folder structure.
           
+          .PARAMETER AccessToken
+          Your parameter description
+
           .PARAMETER BaseURI
           Your parameter description
 
@@ -22,16 +25,19 @@ Function Get-GitRepositoryListing
           .PARAMETER RepositoryPath
           Your parameter description
 
-          .PARAMETER AccessToken
-          Your parameter description
-
-          .PARAMETER Download
+          .PARAMETER RepositoryBranch
           Your parameter description
 
           .PARAMETER DestinationDirectory
           Your parameter description
 
-          .PARAMETER ShortenDirectoryStructure
+          .PARAMETER Download
+          Your parameter description
+
+          .PARAMETER Recursive
+          Your parameter description
+
+          .PARAMETER Flatten
           Your parameter description
 
           .PARAMETER Force
@@ -44,16 +50,41 @@ Function Get-GitRepositoryListing
           Place some code here to show how to use your function
 
           .EXAMPLE
+          Download from a public Git repository without using an access token.
+
           $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
 	          $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
-	          $GetGitRepositoryListingParameters.RepositoryOwner = "YourRepositoryOwner"
-	          $GetGitRepositoryListingParameters.RepositoryName = "YourRepositoryName"
-	          $GetGitRepositoryListingParameters.RepositoryPath = "YourRepositoryRoot/YourRepositoryFolder1/YourRepositoryFolder2"
-	          $GetGitRepositoryListingParameters.AccessToken = "YourGithubPersonalAccessToken"
+	          $GetGitRepositoryListingParameters.RepositoryOwner = "RepositoryOwner"
+	          $GetGitRepositoryListingParameters.RepositoryName = "RepositoryName"
+	          $GetGitRepositoryListingParameters.RepositoryPath = "RepositoryPath"
+            $GetGitRepositoryListingParameters.RepositoryBranch = "RepositoryBranch"
+	          $GetGitRepositoryListingParameters.DestinationDirectory = "$($Env:Userprofile)\Downloads\Get-GitRepositoryListing"
 	          $GetGitRepositoryListingParameters.Download = $False
-	          $GetGitRepositoryListingParameters.DestinationDirectory = "$($Env:Windir)\Temp\Github"
-            $GetGitRepositoryListingParameters.ShortenDirectoryStructure = $False
-            $GetGitRepositoryListingParameters.Force = $False
+	          $GetGitRepositoryListingParameters.Recursive = $True
+            $GetGitRepositoryListingParameters.Flatten = $False
+	          $GetGitRepositoryListingParameters.Force = $False
+	          $GetGitRepositoryListingParameters.ContinueOnError = $False
+	          $GetGitRepositoryListingParameters.Verbose = $True
+
+          $GetGitRepositoryListingResult = Get-GitRepositoryListing @GetGitRepositoryListingParameters
+
+          Write-Output -InputObject ($GetGitRepositoryListingResult)
+
+          .EXAMPLE
+          Download from a private Git repository by using an access token.
+
+          $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
+	          $GetGitRepositoryListingParameters.AccessToken = "YourAccessToken"
+	          $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
+	          $GetGitRepositoryListingParameters.RepositoryOwner = "RepositoryOwner"
+	          $GetGitRepositoryListingParameters.RepositoryName = "RepositoryName"
+	          $GetGitRepositoryListingParameters.RepositoryPath = "RepositoryPath"
+            $GetGitRepositoryListingParameters.RepositoryBranch = "RepositoryBranch"
+	          $GetGitRepositoryListingParameters.DestinationDirectory = "$($Env:Userprofile)\Downloads\Get-GitRepositoryListing"
+	          $GetGitRepositoryListingParameters.Download = $False
+	          $GetGitRepositoryListingParameters.Recursive = $True
+            $GetGitRepositoryListingParameters.Flatten = $False
+	          $GetGitRepositoryListingParameters.Force = $False
 	          $GetGitRepositoryListingParameters.ContinueOnError = $False
 	          $GetGitRepositoryListingParameters.Verbose = $True
 
@@ -62,10 +93,10 @@ Function Get-GitRepositoryListing
           Write-Output -InputObject ($GetGitRepositoryListingResult)
   
           .NOTES
-          Any useful tidbits
+          This function could also theoretically support Git repositories outside of Github, such as Gitea, or Gitlab.
           
           .LINK
-          https://www.itprotoday.com/powershell/calculate-md5-and-sha1-file-hashes-using-powershell
+          https://docs.github.com/v3/repos/contents/
         #>
         
         [CmdletBinding(ConfirmImpact = 'Low')]
@@ -73,6 +104,10 @@ Function Get-GitRepositoryListing
         Param
           (        
 		          [Parameter(Mandatory=$False)]
+              [ValidateNotNullOrEmpty()]
+		          [System.String]$AccessToken,
+
+              [Parameter(Mandatory=$False)]
               [ValidateNotNullOrEmpty()]
 		          [System.URI]$BaseURI,
 
@@ -87,20 +122,23 @@ Function Get-GitRepositoryListing
 		          [Parameter(Mandatory=$True)]
               [ValidateNotNullOrEmpty()]
 		          [System.String]$RepositoryPath,
-  
+
 		          [Parameter(Mandatory=$False)]
               [ValidateNotNullOrEmpty()]
-		          [System.String]$AccessToken,
-
-              [Parameter(Mandatory=$False)]
-              [Switch]$Download,
+		          [System.String]$RepositoryBranch,
 
 		          [Parameter(Mandatory=$False)]
               [ValidateNotNullOrEmpty()]
 		          [System.IO.DirectoryInfo]$DestinationDirectory,
+  
+              [Parameter(Mandatory=$False)]
+              [Switch]$Download,
 
               [Parameter(Mandatory=$False)]
-              [Switch]$ShortenDirectoryStructure,
+              [Switch]$Recursive,
+
+              [Parameter(Mandatory=$False)]
+              [Switch]$Flatten,
 
               [Parameter(Mandatory=$False)]
               [Switch]$Force,
@@ -204,12 +242,26 @@ Function Get-GitRepositoryListing
                     $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Execution of $($FunctionName) began on $($FunctionStartTime.ToString($DateTimeLogFormat))"
                     Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
 
+                    #region Adjust security protocol type(s)
+                      [System.Net.SecurityProtocolType]$DesiredSecurityProtocol = [System.Net.SecurityProtocolType]::TLS12
+  
+                      $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to set the desired security protocol to `"$($DesiredSecurityProtocol.ToString().ToUpper())`". Please Wait..."
+                      Write-Verbose -Message ($LoggingDetails.LogMessage)
+          
+                      $Null = [System.Net.ServicePointManager]::SecurityProtocol = ($DesiredSecurityProtocol)
+                    #endregion
+
                     #Define default parameter values
                       Switch ($True)
                         {
                             {([String]::IsNullOrEmpty($BaseURI) -eq $True) -or ([String]::IsNullOrWhiteSpace($BaseURI) -eq $True)}
                               {
                                   [System.URI]$BaseURI = 'https://api.github.com'
+                              }
+
+                            {([String]::IsNullOrEmpty($RepositoryBranch) -eq $True) -or ([String]::IsNullOrWhiteSpace($RepositoryBranch) -eq $True)}
+                              {
+                                  [System.String]$RepositoryBranch = 'main'
                               }
 
                             {([String]::IsNullOrEmpty($DestinationDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DestinationDirectory) -eq $True)}
@@ -423,7 +475,7 @@ Function Get-GitRepositoryListing
                 {  
                     $RepositoryPath = $RepositoryPath -ireplace '(\/{1,})|(\\{1,})', '/'
                     
-                    [System.URI]$InitialRequestURI = "$($BaseURI.OriginalString)/repos/$($RepositoryOwner)/$($RepositoryName)/contents/$($RepositoryPath.TrimStart('/').TrimEnd('/'))"
+                    [System.URI]$InitialRequestURI = "$($BaseURI.OriginalString)/repos/$($RepositoryOwner)/$($RepositoryName)/contents/$($RepositoryPath.TrimStart('/').TrimEnd('/'))?ref=$($RepositoryBranch)"
 
                     $OutputObjectProperties.InitialRequestURI = $InitialRequestURI
 
@@ -433,11 +485,13 @@ Function Get-GitRepositoryListing
                                                 Param
                                                   (
                                                       [System.URI]$RequestURI,
-                                                      [System.String]$AccessToken
+                                                      [System.String]$AccessToken,
+                                                      [Switch]$Recursive
                                                   )
 
                                                 $InvokeWebRequestHeaders = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-                                                  $InvokeWebRequestHeaders.'User-Agent' = 'chrome'
+                                                  $InvokeWebRequestHeaders.'Accept' = 'application/vnd.github+json'
+                                                  #$InvokeWebRequestHeaders.'X-GitHub-Api-Version' = '2022-11-28'
                                                 
                                                 Switch ($True)
                                                   {
@@ -454,6 +508,8 @@ Function Get-GitRepositoryListing
 	                                                $InvokeWebRequestParameters.DisableKeepAlive = $False
 	                                                $InvokeWebRequestParameters.TimeoutSec = 30
 	                                                $InvokeWebRequestParameters.Method = 'Get'
+                                                  $InvokeWebRequestParameters.ContentType = 'application/vnd.github+json'
+                                                  $InvokeWebRequestParameters.UserAgent = [Microsoft.PowerShell.Commands.PSUserAgent]::Chrome
 	                                                $InvokeWebRequestParameters.Verbose = $False
 
                                                 Switch ($InvokeWebRequestHeaders.Keys.Count -gt 0)
@@ -511,41 +567,51 @@ Function Get-GitRepositoryListing
                                                                                       {
                                                                                           {($_ -iin @('dir'))}
                                                                                             {                                                                                                                                                                                                                                          
-                                                                                                $GetRepositoryListing.InvokeReturnAsIs($RepositoryObject.URL, $AccessToken)
-                                                                                            }
-
-                                                                                          {($_ -iin @('file'))}
-                                                                                            {                                                                              
-                                                                                                Switch ($ShortenDirectoryStructure.IsPresent)
+                                                                                                Switch ($Recursive.IsPresent)
                                                                                                   {
                                                                                                       {($_ -eq $True)}
                                                                                                         {
-                                                                                                            [String]$RepositoryObjectParentDirectory = Split-Path -Path ($RepositoryPath) -Parent
-
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObject.Path -ireplace '\/{1,}', '\'
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObjectDirectory -ireplace [Regex]::Escape($RepositoryObject.Name), ''
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObjectDirectory -ireplace [Regex]::Escape($RepositoryObjectParentDirectory), ''
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObjectDirectory.TrimStart('\').TrimEnd('\')
-                                                                                                        }
-
-                                                                                                      Default
-                                                                                                        {
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObject.Path -ireplace '\/{1,}', '\'
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObjectDirectory -ireplace [Regex]::Escape($RepositoryObject.Name), ''
-                                                                                                            $RepositoryObjectDirectory = $RepositoryObjectDirectory.TrimStart('\').TrimEnd('\')
+                                                                                                            $GetRepositoryListing.InvokeReturnAsIs($RepositoryObject.URL, $AccessToken, $Recursive.IsPresent)
                                                                                                         }
                                                                                                   }
+                                                                                            }
+
+                                                                                          {($_ -iin @('file'))}
+                                                                                            {                                                                                  
+                                                                                                $RepositoryObjectDirectorySegments = $RepositoryObject.Path.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries) -As [System.Collections.Generic.List[System.String]]
+
+                                                                                                $Null = $RepositoryObjectDirectorySegments.RemoveAt(0)
+
+                                                                                                #Consider developing a way to remove additional directory segments based on the specified repository path depth. This will allow for downloading files at a directory and below to the filesystem whilst mirroring the directory structure from that level and below.
+                                                                                                
+                                                                                                $RepositoryObjectDirectory = ($RepositoryObjectDirectorySegments -Join '/') -ireplace '\/{1,}', '\'
+                                                                                                $RepositoryObjectDirectory = $RepositoryObjectDirectory -ireplace [Regex]::Escape($RepositoryObject.Name), ''
+                                                                                                $RepositoryObjectDirectory = $RepositoryObjectDirectory.TrimStart('\').TrimEnd('\')
                                                           
                                                                                                 $RepositoryListingObjectProperties = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
                                                                                                   $RepositoryListingObjectProperties.URL = $RepositoryObject.'download_url' -As [System.URI]
                                                                                                   $RepositoryListingObjectProperties.URLEscaped = [System.URI]::EscapeURIString($RepositoryListingObjectProperties.URL)
-                                                                                                  $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory)\$($RepositoryObjectDirectory)\$($RepositoryObject.Name)" -As [System.IO.FileInfo]
+                                                                                                  $RepositoryListingObjectProperties.RepositoryPath = $RepositoryObject.'path'
+                                                                                                  $RepositoryListingObjectProperties.DestinationPath = $Null
                                                                                                   $RepositoryListingObjectProperties.ExpectedDownloadSize = $RepositoryObject.Size -As [System.UInt64]
                                                                                                   $RepositoryListingObjectProperties.ExpectedFileHash = $RepositoryObject.sha
                                                                                                   $RepositoryListingObjectProperties.DownloadStatus = 'NotAttempted'
                                                                                                   $RepositoryListingObjectProperties.DownloadStartTime = $Null
                                                                                                   $RepositoryListingObjectProperties.DownloadCompletionTime = $Null
                                                                                                   $RepositoryListingObjectProperties.DownloadDuration = $Null
+
+                                                                                                Switch ($Flatten.IsPresent)
+                                                                                                  {
+                                                                                                      {($_ -eq $True)}
+                                                                                                        {
+                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory)\$($RepositoryObject.Name)" -As [System.IO.FileInfo]
+                                                                                                        }
+
+                                                                                                      Default
+                                                                                                        {
+                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory)\$($RepositoryObjectDirectory)\$($RepositoryObject.Name)" -As [System.IO.FileInfo]
+                                                                                                        }
+                                                                                                  }
 
                                                                                                 $RepositoryListingObject = New-Object -TypeName 'System.Management.Automation.PSObject' -Property ($RepositoryListingObjectProperties)
                                                                               
@@ -558,7 +624,7 @@ Function Get-GitRepositoryListing
                                                                                     $ErrorHandlingDefinition.Invoke(2, $ContinueOnError.IsPresent)
                                                                                 }
                                                                               Finally
-                                                                                {
+                                                                                {                                                                                                                                                                        
                                                                                     $RepositoryObjectListCounter++
                                                                                 }
                                                                           }
@@ -568,7 +634,7 @@ Function Get-GitRepositoryListing
                                                   }
                                             }
 
-                    $Null = $GetRepositoryListing.InvokeReturnAsIs($InitialRequestURI, $AccessToken)
+                    $Null = $GetRepositoryListing.InvokeReturnAsIs($InitialRequestURI.OriginalString, $AccessToken, $Recursive.IsPresent)
 
                     $OutputObject = New-Object -TypeName 'System.Management.Automation.PSObject' -Property ($OutputObjectProperties)
 
@@ -597,7 +663,7 @@ Function Get-GitRepositoryListing
                                                         $DownloadRepositoryListItem = {
                                                                                           Param
                                                                                             (
-                                                                                                $RepositoryListItem
+                                                                                                [System.Management.Automation.PSObject]$RepositoryListItem
                                                                                             )
                                                                                           
                                                                                           $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to download repository list item $($RepositoryListCounter) of $($RepositoryListCount). Please Wait..."
@@ -670,6 +736,8 @@ Function Get-GitRepositoryListing
 
                                                                                 $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Size: $((Convert-FileSize -Size $RepositoryListItem.ExpectedDownloadSize).CalculatedSizeStr)"
                                                                                 Write-Verbose -Message ($LoggingDetails.LogMessage)
+
+                                                                                $RepositoryListItem.DownloadStatus = 'Skipped'
                                                                             }
                                                                       }
                                                                 }
