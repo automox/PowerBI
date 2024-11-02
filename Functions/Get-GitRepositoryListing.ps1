@@ -47,9 +47,6 @@ Function Get-GitRepositoryListing
           Your parameter description
           
           .EXAMPLE
-          Place some code here to show how to use your function
-
-          .EXAMPLE
           Download from a public Git repository without using an access token.
 
           $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
@@ -94,58 +91,63 @@ Function Get-GitRepositoryListing
   
           .NOTES
           This function could also theoretically support Git repositories outside of Github, such as Gitea, or Gitlab.
+
+          File hash calculation does not work as intended because Git computes the hash of the blob along with some extra padding data and not the file itself. So it will always mismatch.
           
           .LINK
           https://docs.github.com/v3/repos/contents/
+
+          .LINK
+          https://stackoverflow.com/questions/7225313/how-does-git-compute-file-hashes/7225329#7225329
         #>
         
         [CmdletBinding(ConfirmImpact = 'Low')]
-       
-        Param
-          (        
-		          [Parameter(Mandatory=$False)]
-              [ValidateNotNullOrEmpty()]
-		          [System.String]$AccessToken,
+          Param
+            (        
+		            [Parameter(Mandatory=$False)]
+                [ValidateNotNullOrEmpty()]
+		            [System.String]$AccessToken,
 
-              [Parameter(Mandatory=$False)]
-              [ValidateNotNullOrEmpty()]
-		          [System.URI]$BaseURI,
+                [Parameter(Mandatory=$False)]
+                [ValidateNotNullOrEmpty()]
+		            [System.URI]$BaseURI,
 
-		          [Parameter(Mandatory=$True)]
-              [ValidateNotNullOrEmpty()]
-		          [System.String]$RepositoryOwner,
+		            [Parameter(Mandatory=$True)]
+                [ValidateNotNullOrEmpty()]
+		            [System.String]$RepositoryOwner,
 
-		          [Parameter(Mandatory=$True)]
-              [ValidateNotNullOrEmpty()]
-		          [System.String]$RepositoryName,
+		            [Parameter(Mandatory=$True)]
+                [ValidateNotNullOrEmpty()]
+		            [System.String]$RepositoryName,
 
-		          [Parameter(Mandatory=$True)]
-              [ValidateNotNullOrEmpty()]
-		          [System.String]$RepositoryPath,
+		            [Parameter(Mandatory=$False)]
+                [AllowEmptyString()]
+                [AllowNull()]
+		            [System.String]$RepositoryPath,
 
-		          [Parameter(Mandatory=$False)]
-              [ValidateNotNullOrEmpty()]
-		          [System.String]$RepositoryBranch,
+		            [Parameter(Mandatory=$False)]
+                [ValidateNotNullOrEmpty()]
+		            [System.String]$RepositoryBranch,
 
-		          [Parameter(Mandatory=$False)]
-              [ValidateNotNullOrEmpty()]
-		          [System.IO.DirectoryInfo]$DestinationDirectory,
+		            [Parameter(Mandatory=$False)]
+                [ValidateNotNullOrEmpty()]
+		            [System.IO.DirectoryInfo]$DestinationDirectory,
   
-              [Parameter(Mandatory=$False)]
-              [Switch]$Download,
+                [Parameter(Mandatory=$False)]
+                [Switch]$Download,
 
-              [Parameter(Mandatory=$False)]
-              [Switch]$Recursive,
+                [Parameter(Mandatory=$False)]
+                [Switch]$Recursive,
 
-              [Parameter(Mandatory=$False)]
-              [Switch]$Flatten,
+                [Parameter(Mandatory=$False)]
+                [Switch]$Flatten,
 
-              [Parameter(Mandatory=$False)]
-              [Switch]$Force,
+                [Parameter(Mandatory=$False)]
+                [Switch]$Force,
                                             
-              [Parameter(Mandatory=$False)]
-              [Switch]$ContinueOnError        
-          )
+                [Parameter(Mandatory=$False)]
+                [Switch]$ContinueOnError        
+            )
                     
         Begin
           {
@@ -266,7 +268,7 @@ Function Get-GitRepositoryListing
 
                             {([String]::IsNullOrEmpty($DestinationDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DestinationDirectory) -eq $True)}
                               {
-                                  [System.IO.DirectoryInfo]$DestinationDirectory = "$($Env:Windir)\Temp\Github"
+                                  [System.IO.DirectoryInfo]$DestinationDirectory = "$($Env:Windir)\Temp\Github\$($RepositoryName)"
                               }
                         }
 
@@ -387,6 +389,94 @@ Function Get-GitRepositoryListing
                               }
                         }
                       #endregion
+
+                    #region Function Invoke-FileHashCalculation
+                    Function Invoke-FileHashCalculation
+                      {
+                            <#
+                              .SYNOPSIS
+                              Calculate the hash of the specified file.
+          
+                              .DESCRIPTION
+                              This is an alternative to the Get-FileHash cmdlet to avoid the version Powershell 5 requirement. The underlying .NET classes are used instead.
+          
+                              .PARAMETER Path
+                              A valid path to a file that exists.
+
+                              .PARAMETER Algorithm
+                              A valid hash algorithm. SHA256 will be used by default.
+          
+                              .EXAMPLE
+                              Invoke-FileHashCalculation -Path "$($Env:SystemDrive)\Users\Public\Documents\MyFile.txt" -Algorithm 'SHA256'
+          
+                              .EXAMPLE
+                              $InvokeFileHashCalculationParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
+	                              $InvokeFileHashCalculationParameters.Path = "$($Env:SystemDrive)\Users\Public\Documents\MyFile.txt"
+	                              $InvokeFileHashCalculationParameters.Algorithm = "SHA256"
+
+                              $InvokeFileHashCalculationResult = Invoke-FileHashCalculation @InvokeFileHashCalculationParameters
+
+                              Write-Output -InputObject ($InvokeFileHashCalculationResult)
+                            #>
+      
+                          Param
+                            (
+                                [Parameter(Mandatory=$True)]
+                                [ValidateNotNullOrEmpty()]
+                                [System.IO.FileInfo]$Path
+                            )
+
+                          Begin
+                            {
+                                $DateTimeMessageFormat = 'MM/dd/yyyy HH:mm:ss.FFF'  ###03/23/2022 11:12:48.347###
+                                [ScriptBlock]$GetCurrentDateTimeMessageFormat = {(Get-Date).ToString($DateTimeMessageFormat)}
+
+                                $OutputObject = $Null
+                            }
+
+                          Process
+                            {
+                                Try
+                                  {
+                                      Switch ([System.IO.File]::Exists($Path))
+                                        {
+                                            {($_ -eq $True)}
+                                              {
+                                                  $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to calculate the hash for the specified path. Please Wait..."
+                                                  Write-Verbose -Message ($LoggingDetails.LogMessage)
+
+                                                  $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Path: $($Path)"
+                                                  Write-Verbose -Message ($LoggingDetails.LogMessage)
+                              
+                                                  $Algorithm = [System.Security.Cryptography.SHA1Managed]::Create() 
+                                                  $Stream = [System.IO.File]::OpenRead($Path) 
+                                                  $OutputObject = [BitConverter]::ToString($Algorithm.ComputeHash($Stream)).Replace("-", "").ToLower() 
+                                                  $Stream.Close()
+                                              }
+
+                                            Default
+                                              {
+                                                  $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - The specified path does not exist. [Path: $($Path)]"
+                                                  Write-Verbose -Message ($LoggingDetails.LogMessage)
+                                              }
+                                        }
+                                  }
+                                Catch
+                                  {                  
+                                      Write-Warning -Message "$($MyInvocation.MyCommand): $($_.Exception.Message)"
+                                  }
+                                Finally
+                                  {
+                                      Write-Output -InputObject ($OutputObject)
+                                  }
+                            }
+
+                          End
+                            {
+            
+                            }
+                      }
+                    #endregion
                     
                     #Define additional ScriptBlocks
                       [ScriptBlock]$GetTimeSpanMessage = {
@@ -474,8 +564,32 @@ Function Get-GitRepositoryListing
               Try
                 {  
                     $RepositoryPath = $RepositoryPath -ireplace '(\/{1,})|(\\{1,})', '/'
+
+                    #region Dynamically build the initial request URI
+                      $InitialRequestURIBuilder = New-Object -TypeName 'System.Text.StringBuilder'
+                        $Null = $InitialRequestURIBuilder.Append($BaseURI.Scheme).Append('://')
+                        $Null = $InitialRequestURIBuilder.Append($BaseURI.DnsSafeHost)
+                        $Null = $InitialRequestURIBuilder.Append(':').Append($BaseURI.Port)
+                        $Null = $InitialRequestURIBuilder.Append('/').Append('repos')
+                        $Null = $InitialRequestURIBuilder.Append('/').Append($RepositoryOwner)
+                        $Null = $InitialRequestURIBuilder.Append('/').Append($RepositoryName)
+                        $Null = $InitialRequestURIBuilder.Append('/').Append('contents')
                     
-                    [System.URI]$InitialRequestURI = "$($BaseURI.OriginalString)/repos/$($RepositoryOwner)/$($RepositoryName)/contents/$($RepositoryPath.TrimStart('/').TrimEnd('/'))?ref=$($RepositoryBranch)"
+                      Switch ($True)
+                        {
+                            {([String]::IsNullOrEmpty($RepositoryPath) -eq $False) -and ([String]::IsNullOrEmpty($RepositoryPath) -eq $False)}
+                              {
+                                  $Null = $InitialRequestURIBuilder.Append('/').Append($RepositoryPath.TrimStart('/').TrimEnd('/'))
+                              }
+                        }
+
+                      $Null = $InitialRequestURIBuilder.Append('?ref=').Append($RepositoryBranch)
+                    
+                      [System.URI]$InitialRequestURI = $InitialRequestURIBuilder.ToString()
+
+                      $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Initial Request URI: $($InitialRequestURI)" 
+                      Write-Verbose -Message ($LoggingDetails.LogMessage)
+                    #endregion
 
                     $OutputObjectProperties.InitialRequestURI = $InitialRequestURI
 
@@ -555,6 +669,8 @@ Function Get-GitRepositoryListing
                                                               {
                                                                   {($_ -eq $True)}
                                                                     {
+                                                                        $RepositoryObjectList = $RepositoryObjectList | Sort-Object -Property @('Type')
+                                                                        
                                                                         $RepositoryObjectListCounter = 1
                                                                         
                                                                         For ($RepositoryObjectListIndex = 0; $RepositoryObjectListIndex -lt $RepositoryObjectListCount; $RepositoryObjectListIndex++)
@@ -575,15 +691,39 @@ Function Get-GitRepositoryListing
                                                                                                         }
                                                                                                   }
                                                                                             }
-
+                                                                                          
                                                                                           {($_ -iin @('file'))}
-                                                                                            {                                                                                  
+                                                                                            {                                                                                                                                                                                  
+                                                                                                $RepositoryPathSegments = Try {$RepositoryPath.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries) -As [System.Collections.Generic.List[System.String]]} Catch {$Null}
+                                                                                                
+                                                                                                $RepositoryPathSegmentCount = ($RepositoryPathSegments | Measure-Object).Count
+                                                                                                
                                                                                                 $RepositoryObjectDirectorySegments = $RepositoryObject.Path.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries) -As [System.Collections.Generic.List[System.String]]
 
-                                                                                                $Null = $RepositoryObjectDirectorySegments.RemoveAt(0)
+                                                                                                Switch ($Null -ine $RepositoryPathSegments)
+                                                                                                  {
+                                                                                                      {($_ -eq $True)}
+                                                                                                        {
+                                                                                                            For ($RepositoryPathSegmentIndex = 0; $RepositoryPathSegmentIndex -lt $RepositoryPathSegmentCount; $RepositoryPathSegmentIndex++)
+                                                                                                              {
+                                                                                                                  $RepositoryPathSegment = $RepositoryPathSegments[$RepositoryPathSegmentIndex]
 
-                                                                                                #Consider developing a way to remove additional directory segments based on the specified repository path depth. This will allow for downloading files at a directory and below to the filesystem whilst mirroring the directory structure from that level and below.
-                                                                                                
+                                                                                                                  Try {$RepositoryObjectDirectorySegments.RemoveAt(0)} Catch {}
+                                                                                                              }
+                                                                                                        }
+
+                                                                                                      Default
+                                                                                                        {
+                                                                                                            Switch (([String]::IsNullOrEmpty($RepositoryPath) -eq $False) -and ([String]::IsNullOrWhiteSpace($RepositoryPath) -eq $False))
+                                                                                                              {
+                                                                                                                  {($_ -eq $True)}
+                                                                                                                    {
+                                                                                                                        $Null = $RepositoryObjectDirectorySegments.RemoveAt(0)
+                                                                                                                    }
+                                                                                                              }
+                                                                                                        }
+                                                                                                  }
+
                                                                                                 $RepositoryObjectDirectory = ($RepositoryObjectDirectorySegments -Join '/') -ireplace '\/{1,}', '\'
                                                                                                 $RepositoryObjectDirectory = $RepositoryObjectDirectory -ireplace [Regex]::Escape($RepositoryObject.Name), ''
                                                                                                 $RepositoryObjectDirectory = $RepositoryObjectDirectory.TrimStart('\').TrimEnd('\')
@@ -593,8 +733,10 @@ Function Get-GitRepositoryListing
                                                                                                   $RepositoryListingObjectProperties.URLEscaped = [System.URI]::EscapeURIString($RepositoryListingObjectProperties.URL)
                                                                                                   $RepositoryListingObjectProperties.RepositoryPath = $RepositoryObject.'path'
                                                                                                   $RepositoryListingObjectProperties.DestinationPath = $Null
+                                                                                                  $RepositoryListingObjectProperties.Depth = $Null
                                                                                                   $RepositoryListingObjectProperties.ExpectedDownloadSize = $RepositoryObject.Size -As [System.UInt64]
                                                                                                   $RepositoryListingObjectProperties.ExpectedFileHash = $RepositoryObject.sha
+                                                                                                  $RepositoryListingObjectProperties.ActualFileHash = $Null
                                                                                                   $RepositoryListingObjectProperties.DownloadStatus = 'NotAttempted'
                                                                                                   $RepositoryListingObjectProperties.DownloadStartTime = $Null
                                                                                                   $RepositoryListingObjectProperties.DownloadCompletionTime = $Null
@@ -604,14 +746,20 @@ Function Get-GitRepositoryListing
                                                                                                   {
                                                                                                       {($_ -eq $True)}
                                                                                                         {
-                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory)\$($RepositoryObject.Name)" -As [System.IO.FileInfo]
+                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory.FullName)\$($RepositoryObject.Name)"
                                                                                                         }
 
                                                                                                       Default
                                                                                                         {
-                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory)\$($RepositoryObjectDirectory)\$($RepositoryObject.Name)" -As [System.IO.FileInfo]
+                                                                                                            $RepositoryListingObjectProperties.DestinationPath = "$($DestinationDirectory.FullName)\$($RepositoryObjectDirectory)\$($RepositoryObject.Name)"
                                                                                                         }
                                                                                                   }
+
+                                                                                                $RepositoryListingObjectProperties.DestinationPath = $RepositoryListingObjectProperties.DestinationPath -ireplace '(\\{2,})', '\'
+
+                                                                                                $RepositoryListingObjectProperties.DestinationPath = $RepositoryListingObjectProperties.DestinationPath -As [System.IO.FileInfo]
+
+                                                                                                $RepositoryListingObjectProperties.Depth = Try {$RepositoryListingObjectProperties.DestinationPath.Directory.FullName.Replace($DestinationDirectory.FullName, '').Split('\', [System.StringSplitOptions]::RemoveEmptyEntries).Count} Catch {$Null}
 
                                                                                                 $RepositoryListingObject = New-Object -TypeName 'System.Management.Automation.PSObject' -Property ($RepositoryListingObjectProperties)
                                                                               
@@ -740,11 +888,15 @@ Function Get-GitRepositoryListing
                                                                                 $RepositoryListItem.DownloadStatus = 'Skipped'
                                                                             }
                                                                       }
+
+                                                                    #$RepositoryListItem.ActualFileHash = Invoke-FileHashCalculation -Path ($RepositoryListItem.DestinationPath)
                                                                 }
 
                                                               Default
                                                                 {
                                                                     $Null = $DownloadRepositoryListItem.InvokeReturnAsIs($RepositoryListItem)
+
+                                                                    #$RepositoryListItem.ActualFileHash = Invoke-FileHashCalculation -Path ($RepositoryListItem.DestinationPath)
                                                                 }
                                                           }    
                                                     }

@@ -372,9 +372,8 @@ Switch (Test-ProcessElevationStatus)
 	                      $GetGitRepositoryListingParameters.RepositoryPath = "Get-AutomoxAPIData"
                         $GetGitRepositoryListingParameters.RepositoryBranch = "main"
 	                      $GetGitRepositoryListingParameters.DestinationDirectory = "$($DownloadDirectory.FullName)"
-                        $GetGitRepositoryListingParameters.Download = $False
+                        $GetGitRepositoryListingParameters.Download = $True
                         $GetGitRepositoryListingParameters.Recursive = $True
-                        $GetGitRepositoryListingParameters.Flatten = $False
                         $GetGitRepositoryListingParameters.Force = $False
 	                      $GetGitRepositoryListingParameters.ContinueOnError = $False
 	                      $GetGitRepositoryListingParameters.Verbose = $True
@@ -385,9 +384,102 @@ Switch (Test-ProcessElevationStatus)
                         {
                             {($_ -eq $True)}
                               {
-                                  
-                                  $GetGitRepositoryListingResult.RepositoryList
-                                  
+                                  [ScriptBlock]$RepositoryScriptExecutionCriteria = {($_.DownloadStatus -iin @('Success', 'Skipped')) -and ($_.DestinationPath.Extension -iin @('.ps1')) -and ($_.Depth -in @(0))}
+                      
+                                  $RepositoryScriptExecutionList = $GetGitRepositoryListingResult.RepositoryList | Where-Object -FilterScript ($RepositoryScriptExecutionCriteria)
+
+                                  $RepositoryScriptExecutionListCount = ($RepositoryScriptExecutionList | Measure-Object).Count
+                              
+                                  $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Repository Script Criteria: $($RepositoryScriptExecutionCriteria.ToString())"
+                                  Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
+                      
+                                  $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Located $($RepositoryScriptExecutionListCount) repository script(s) that meet the specified criteria."
+                                  Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
+
+                                  Switch ($RepositoryScriptExecutionListCount -gt 0)
+                                    {
+                                        {($_ -eq $True)}
+                                          {
+                                              $RepositoryScriptExecutionListCounter = 1
+
+                                              For ($RepositoryScriptExecutionListIndex = 0; $RepositoryScriptExecutionListIndex -lt $RepositoryScriptExecutionListCount; $RepositoryScriptExecutionListIndex++)
+                                                {
+                                                    Try
+                                                      {
+                                                          $RepositoryScriptExecution = $RepositoryScriptExecutionList[$RepositoryScriptExecutionListIndex]
+
+                                                          Switch ($RepositoryScriptExecution.DestinationPath.Exists)
+                                                            {
+                                                                {($_ -eq $True)}
+                                                                  {
+                                                                      $StartProcessWithOutputParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
+                                                                        $StartProcessWithOutputParameters.FilePath = "powershell.exe"
+                                                                        $StartProcessWithOutputParameters.ArgumentList = New-Object -TypeName 'System.Collections.Generic.List[String]'
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-ExecutionPolicy Bypass')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-NonInteractive')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-NoProfile')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-NoLogo')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-Command')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('"&')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add("'$($RepositoryScriptExecution.DestinationPath.FullName)'")
+
+                                                                          Switch ($RepositoryScriptExecution.DestinationPath.BaseName)
+                                                                            {
+                                                                                {($_ -imatch '(^.*$)')}
+                                                                                  {
+                                                                                      #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName01 '$($ScriptParameterNameValue01)'")
+                                                                                      #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName")
+                                                                                  }
+                                                                            }
+
+                                                                          $LastArgumentIndex = $StartProcessWithOutputParameters.ArgumentList.Count - 1
+                                                                      
+                                                                          $LastArgumentOriginalValue = $StartProcessWithOutputParameters.ArgumentList[$($LastArgumentIndex)]
+                                                                      
+                                                                          $LastArgumentNewValue = $LastArgumentOriginalValue + ';' + ' ' + '[System.Environment]::Exit(($LASTEXITCODE -Bor [Int](-Not $? -And -Not $LASTEXITCODE)))' + '"'
+                                                                      
+                                                                          $StartProcessWithOutputParameters.ArgumentList.RemoveAt($LastArgumentIndex)
+
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add($LastArgumentNewValue)
+                                                                      
+                                                                        $StartProcessWithOutputParameters.AcceptableExitCodeList = New-Object -TypeName 'System.Collections.Generic.List[String]'
+                                                                          $StartProcessWithOutputParameters.AcceptableExitCodeList.Add('0')
+                                                                          $StartProcessWithOutputParameters.AcceptableExitCodeList.Add('3010')
+                                                                        $StartProcessWithOutputParameters.CreateNoWindow = $True
+                                                                        $StartProcessWithOutputParameters.ExecutionTimeout = [System.TimeSpan]::FromMinutes(30)
+                                                                        $StartProcessWithOutputParameters.ExecutionTimeoutInterval = [System.TimeSpan]::FromSeconds(30)
+                                                                        $StartProcessWithOutputParameters.Verbose = $True
+
+                                                                      $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to execute repository script $($RepositoryScriptExecutionListCounter) of $($RepositoryScriptExecutionListCount). Please Wait..."
+                                                                      Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
+
+                                                                      $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Path: $($RepositoryScriptExecution.DestinationPath.FullName)"
+                                                                      Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
+
+                                                                      #$StartProcessWithOutputResult = Start-ProcessWithOutput @StartProcessWithOutputParameters
+                                                                  }
+
+                                                                Default
+                                                                  {
+                                                                      $LoggingDetails.WarningMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - The specified repository script does not exist. Skipping."
+                                                                      Write-Warning -Message ($LoggingDetails.WarningMessage) -Verbose
+
+                                                                      $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Path: $($RepositoryScriptExecution.DestinationPath.FullName)"
+                                                                      Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
+                                                                  }
+                                                            }
+                                                      }
+                                                    Catch
+                                                      {
+                                                          $ErrorHandlingDefinition.Invoke(2, $ContinueOnError.IsPresent)
+                                                      }
+                                                    Finally
+                                                      {
+                                                          $RepositoryScriptExecutionListCounter++
+                                                      }   
+                                                }
+                                          }
+                                    }
                               }
                         }
                     #endregion
