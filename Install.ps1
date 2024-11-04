@@ -206,12 +206,12 @@ Switch (Test-ProcessElevationStatus)
                 {
                     {([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
                       {
-                          [System.IO.DirectoryInfo]$DownloadDirectory = "$($Env:Public)\Documents\Get-AutomoxAPIData"
+                          [System.IO.DirectoryInfo]$DownloadDirectory = "$($ScriptDirectory.FullName)\Get-AutomoxAPIData"
                       }
     
                     {([String]::IsNullOrEmpty($LogDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($LogDirectory) -eq $True)}
                       {
-                          [System.IO.DirectoryInfo]$LogDirectory = "$($DownloadDirectory.FullName)\Logs"
+                          [System.IO.DirectoryInfo]$LogDirectory = "$($ScriptDirectory.FullName)\Logs"
                       }       
                 }
 
@@ -371,16 +371,13 @@ Switch (Test-ProcessElevationStatus)
                 {                                              
                     #region Download additional content from the specified Github repository
                       $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-	                      $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
 	                      $GetGitRepositoryListingParameters.RepositoryOwner = "automox"
 	                      $GetGitRepositoryListingParameters.RepositoryName = "powershell-sdk"
 	                      $GetGitRepositoryListingParameters.RepositoryPath = "Get-AutomoxAPIData"
-                        $GetGitRepositoryListingParameters.RepositoryBranch = "main"
 	                      $GetGitRepositoryListingParameters.DestinationDirectory = "$($DownloadDirectory.FullName)"
                         $GetGitRepositoryListingParameters.Download = $True
                         $GetGitRepositoryListingParameters.Recursive = $True
                         $GetGitRepositoryListingParameters.Force = $False
-	                      $GetGitRepositoryListingParameters.ContinueOnError = $False
 	                      $GetGitRepositoryListingParameters.Verbose = $True
 
                       $GetGitRepositoryListingResult = Get-GitRepositoryListing @GetGitRepositoryListingParameters
@@ -388,9 +385,7 @@ Switch (Test-ProcessElevationStatus)
                       Switch ($Null -ine $GetGitRepositoryListingResult)
                         {
                             {($_ -eq $True)}
-                              {
-                                  $GetGitRepositoryListingResult.RepositoryList
-                                  
+                              {                                  
                                   [ScriptBlock]$RepositoryScriptExecutionCriteria = {($_.DownloadStatus -iin @('Success', 'Skipped')) -and ($_.DestinationPath.Extension -iin @('.ps1')) -and ($_.DestinationDepth -in @(0))}
                       
                                   $RepositoryScriptExecutionList = $GetGitRepositoryListingResult.RepositoryList | Where-Object -FilterScript ($RepositoryScriptExecutionCriteria)
