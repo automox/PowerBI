@@ -732,8 +732,9 @@ Function Get-GitRepositoryListing
                                                                                                   $RepositoryListingObjectProperties.URL = $RepositoryObject.'download_url' -As [System.URI]
                                                                                                   $RepositoryListingObjectProperties.URLEscaped = [System.URI]::EscapeURIString($RepositoryListingObjectProperties.URL)
                                                                                                   $RepositoryListingObjectProperties.RepositoryPath = $RepositoryObject.'path'
+                                                                                                  $RepositoryListingObjectProperties.RepositoryDepth = Try {[System.IO.Path]::GetDirectoryName($RepositoryListingObjectProperties.RepositoryPath).Split('\', [System.StringSplitOptions]::RemoveEmptyEntries).Count} Catch {$Null}
                                                                                                   $RepositoryListingObjectProperties.DestinationPath = $Null
-                                                                                                  $RepositoryListingObjectProperties.Depth = $Null
+                                                                                                  $RepositoryListingObjectProperties.DestinationDepth = $Null
                                                                                                   $RepositoryListingObjectProperties.ExpectedDownloadSize = $RepositoryObject.Size -As [System.UInt64]
                                                                                                   $RepositoryListingObjectProperties.ExpectedFileHash = $RepositoryObject.sha
                                                                                                   $RepositoryListingObjectProperties.ActualFileHash = $Null
@@ -759,7 +760,7 @@ Function Get-GitRepositoryListing
 
                                                                                                 $RepositoryListingObjectProperties.DestinationPath = $RepositoryListingObjectProperties.DestinationPath -As [System.IO.FileInfo]
 
-                                                                                                $RepositoryListingObjectProperties.Depth = Try {$RepositoryListingObjectProperties.DestinationPath.Directory.FullName.Replace($DestinationDirectory.FullName, '').Split('\', [System.StringSplitOptions]::RemoveEmptyEntries).Count} Catch {$Null}
+                                                                                                $RepositoryListingObjectProperties.DestinationDepth = Try {$RepositoryListingObjectProperties.DestinationPath.Directory.FullName.Replace($DestinationDirectory.FullName, '').Split('\', [System.StringSplitOptions]::RemoveEmptyEntries).Count} Catch {$Null}
 
                                                                                                 $RepositoryListingObject = New-Object -TypeName 'System.Management.Automation.PSObject' -Property ($RepositoryListingObjectProperties)
                                                                               

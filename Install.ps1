@@ -50,20 +50,30 @@
 [CmdletBinding(SupportsShouldProcess=$True)]
   Param
     (        	                 
-        [Parameter(Mandatory=$False)]
+        [Parameter(Mandatory=$True)]
         [ValidateNotNullOrEmpty()]
         [Alias('OID')]
         [System.String]$OrganizationID,
 
-        [Parameter(Mandatory=$False)]
+        [Parameter(Mandatory=$True)]
         [ValidateNotNullOrEmpty()]
         [Alias('Key')]
         [System.String]$APIKey,
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
+        [Alias('ED')]
+        [System.IO.DirectoryInfo]$ExportDirectory,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
         [Alias('DD')]
         [System.IO.DirectoryInfo]$DownloadDirectory,
+
+        [Parameter(Mandatory=$False)]
+        [ValidateNotNullOrEmpty()]
+        [Alias('CST')]
+        [Switch]$CreateScheduledTask,
                               
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
@@ -384,7 +394,9 @@ Switch (Test-ProcessElevationStatus)
                         {
                             {($_ -eq $True)}
                               {
-                                  [ScriptBlock]$RepositoryScriptExecutionCriteria = {($_.DownloadStatus -iin @('Success', 'Skipped')) -and ($_.DestinationPath.Extension -iin @('.ps1')) -and ($_.Depth -in @(0))}
+                                  $GetGitRepositoryListingResult.RepositoryList
+                                  
+                                  [ScriptBlock]$RepositoryScriptExecutionCriteria = {($_.DownloadStatus -iin @('Success', 'Skipped')) -and ($_.DestinationPath.Extension -iin @('.ps1')) -and ($_.DestinationDepth -in @(0))}
                       
                                   $RepositoryScriptExecutionList = $GetGitRepositoryListingResult.RepositoryList | Where-Object -FilterScript ($RepositoryScriptExecutionCriteria)
 
@@ -423,9 +435,9 @@ Switch (Test-ProcessElevationStatus)
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('"&')
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add("'$($RepositoryScriptExecution.DestinationPath.FullName)'")
 
-                                                                          Switch ($RepositoryScriptExecution.DestinationPath.BaseName)
+                                                                          Switch ($RepositoryScriptExecution.DestinationPath.Name)
                                                                             {
-                                                                                {($_ -imatch '(^.*$)')}
+                                                                                {($_ -iin @('Get-AutomoxAPIData.ps1'))}
                                                                                   {
                                                                                       #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName01 '$($ScriptParameterNameValue01)'")
                                                                                       #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName")
