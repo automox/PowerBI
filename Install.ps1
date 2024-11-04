@@ -2,49 +2,31 @@
 
 <#
     .SYNOPSIS
-    Queries the Automox API.
+    Downloads and configures the Get-AutomoxAPIData powershell script.
           
     .DESCRIPTION
-    Heavily leverages the "Get-AutomoxAPIObject" function in order to query the Automox API. The function will be automatically imported for usage during script execution.
+    Bypasses all of the complexity of configuring this solution by handling 98% of it.
           
     .PARAMETER OrganizationID
-    A valid Automox organization ID. This might take the form of a number or a GUID.
+    A valid Automox organization ID. This could take the form of a number or a GUID.
 
     .PARAMETER APIKey
     A valid Automox API key that is associated with the specified organization ID.
 
-    .PARAMETER ExportDirectory
-    A valid directory where the API request data will be exported. If the directory does not exist, it will be automatically created.
-
-    .PARAMETER LogDirectory
-    A valid directory where the script logs will be located. By default, "C:\Windows\Logs\Software\Get-AutomoxAPIData".
-
     .PARAMETER ContinueOnError
     Specifies whether to ignore fatal errors.
-
-    .PARAMETER LogDir
-    A valid folder path. If the folder does not exist, it will be created. This parameter can also be specified by the alias "LogPath".
-
-    .PARAMETER ContinueOnError
-    Ignore failures.
           
     .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -NoProfile -NoLogo -File "FolderPathContainingScript\Get-AutomoxAPIData.ps1" -OrganizationID 'YourOrganizationID' -APIKey "YourAPIKey"
 
     .EXAMPLE
-    powershell.exe -ExecutionPolicy Bypass -NoProfile -NoLogo -File "FolderPathContainingScript\Get-AutomoxAPIData.ps1" -OrganizationID "YourOrganizationID" -APIKey "YourAPIKey" -ExecutionMode "Execute"
-    
-    .EXAMPLE
-    powershell.exe -ExecutionPolicy Bypass -NoProfile -NoLogo -File "FolderPathContainingScript\Get-AutomoxAPIData.ps1" -OrganizationID "YourOrganizationID" -APIKey "YourAPIKey" -ExecutionMode "CreateScheduledTask"
-  
-    .EXAMPLE
-    powershell.exe -ExecutionPolicy Bypass -NoProfile -NoLogo -File "FolderPathContainingScript\Get-AutomoxAPIData.ps1" -OrganizationID "YourOrganizationID" -APIKey "YourAPIKey" -ExecutionMode "RemoveScheduledTask"
-    
+    powershell.exe -ExecutionPolicy Bypass -NoProfile -NoLogo -File "FolderPathContainingScript\Get-AutomoxAPIData.ps1" -OrganizationID "YourOrganizationID" -APIKey "YourAPIKey" -CreateScheduledTask
+      
     .NOTES
     Any useful tidbits
           
     .LINK
-    A useful link
+    https://github.com/automox/PowerBI
 #>
 
 [CmdletBinding(SupportsShouldProcess=$True)]
@@ -62,19 +44,9 @@
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-        [Alias('DD')]
-        [System.IO.DirectoryInfo]$DownloadDirectory,
-
-        [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
         [Alias('CST')]
         [Switch]$CreateScheduledTask,
-                              
-        [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
-        [Alias('LogDir', 'LD')]
-        [System.IO.DirectoryInfo]$LogDirectory,
-            
+                                          
         [Parameter(Mandatory=$False)]
         [Alias('COE')]
         [Switch]$ContinueOnError
@@ -204,7 +176,7 @@ Switch (Test-ProcessElevationStatus)
             #Determine default parameter value(s)                  
               Switch ($True)
                 {
-                    {([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
+                    {(!$DownloadDirectory) -or ([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
                       {
                           [System.IO.DirectoryInfo]$DownloadDirectory = "$($ScriptDirectory.FullName)\Get-AutomoxAPIData"
                       }
