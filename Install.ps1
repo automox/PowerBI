@@ -62,11 +62,6 @@
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-        [Alias('ED')]
-        [System.IO.DirectoryInfo]$ExportDirectory,
-
-        [Parameter(Mandatory=$False)]
-        [ValidateNotNullOrEmpty()]
         [Alias('DD')]
         [System.IO.DirectoryInfo]$DownloadDirectory,
 
@@ -439,8 +434,21 @@ Switch (Test-ProcessElevationStatus)
                                                                             {
                                                                                 {($_ -iin @('Get-AutomoxAPIData.ps1'))}
                                                                                   {
-                                                                                      #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName01 '$($ScriptParameterNameValue01)'")
-                                                                                      #$StartProcessWithOutputParameters.ArgumentList.Add("-ScriptParameterName")
+                                                                                      $StartProcessWithOutputParameters.ArgumentList.Add("-OrganizationID '$($OrganizationID)'")
+                                                                                      $StartProcessWithOutputParameters.ArgumentList.Add("-APIKey '$($APIKey)'")
+
+                                                                                      Switch ($CreateScheduledTask.IsPresent)
+                                                                                        {
+                                                                                            {($_ -eq $True)}
+                                                                                              {
+                                                                                                  $StartProcessWithOutputParameters.ArgumentList.Add("-ExecutionMode 'CreateScheduledTask'")
+                                                                                              }
+
+                                                                                            Default
+                                                                                              {
+                                                                                                  $StartProcessWithOutputParameters.ArgumentList.Add("-ExecutionMode 'Execute'")
+                                                                                              }
+                                                                                        }
                                                                                   }
                                                                             }
 
