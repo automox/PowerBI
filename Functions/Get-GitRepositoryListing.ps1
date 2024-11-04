@@ -50,17 +50,11 @@ Function Get-GitRepositoryListing
           Download from a public Git repository without using an access token.
 
           $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
-	          $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
 	          $GetGitRepositoryListingParameters.RepositoryOwner = "RepositoryOwner"
 	          $GetGitRepositoryListingParameters.RepositoryName = "RepositoryName"
-	          $GetGitRepositoryListingParameters.RepositoryPath = "RepositoryPath"
-            $GetGitRepositoryListingParameters.RepositoryBranch = "RepositoryBranch"
 	          $GetGitRepositoryListingParameters.DestinationDirectory = "$($Env:Userprofile)\Downloads\Get-GitRepositoryListing"
-	          $GetGitRepositoryListingParameters.Download = $False
+	          $GetGitRepositoryListingParameters.Download = $True
 	          $GetGitRepositoryListingParameters.Recursive = $True
-            $GetGitRepositoryListingParameters.Flatten = $False
-	          $GetGitRepositoryListingParameters.Force = $False
-	          $GetGitRepositoryListingParameters.ContinueOnError = $False
 	          $GetGitRepositoryListingParameters.Verbose = $True
 
           $GetGitRepositoryListingResult = Get-GitRepositoryListing @GetGitRepositoryListingParameters
@@ -72,13 +66,12 @@ Function Get-GitRepositoryListing
 
           $GetGitRepositoryListingParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
 	          $GetGitRepositoryListingParameters.AccessToken = "YourAccessToken"
-	          $GetGitRepositoryListingParameters.BaseURI = 'https://api.github.com'
 	          $GetGitRepositoryListingParameters.RepositoryOwner = "RepositoryOwner"
 	          $GetGitRepositoryListingParameters.RepositoryName = "RepositoryName"
 	          $GetGitRepositoryListingParameters.RepositoryPath = "RepositoryPath"
-            $GetGitRepositoryListingParameters.RepositoryBranch = "RepositoryBranch"
+            $GetGitRepositoryListingParameters.RepositoryBranch = "main"
 	          $GetGitRepositoryListingParameters.DestinationDirectory = "$($Env:Userprofile)\Downloads\Get-GitRepositoryListing"
-	          $GetGitRepositoryListingParameters.Download = $False
+	          $GetGitRepositoryListingParameters.Download = $True
 	          $GetGitRepositoryListingParameters.Recursive = $True
             $GetGitRepositoryListingParameters.Flatten = $False
 	          $GetGitRepositoryListingParameters.Force = $False
@@ -92,7 +85,7 @@ Function Get-GitRepositoryListing
           .NOTES
           This function could also theoretically support Git repositories outside of Github, such as Gitea, or Gitlab.
 
-          File hash calculation does not work as intended because Git computes the hash of the blob along with some extra padding data and not the file itself. So it will always mismatch.
+          File hash calculation does not work as intended because Git computes the hash of the latest commits blob along with some extra padding data and not the file data itself. So it will always mismatch with the way its done within Windows.
           
           .LINK
           https://docs.github.com/v3/repos/contents/
