@@ -374,6 +374,8 @@ Switch (Test-ProcessElevationStatus)
                                     {
                                         {($_ -eq $True)}
                                           {
+                                              $CurrentExecutionPolicy = Get-ExecutionPolicy -Scope Process
+                                              
                                               $RepositoryScriptExecutionListCounter = 1
 
                                               For ($RepositoryScriptExecutionListIndex = 0; $RepositoryScriptExecutionListIndex -lt $RepositoryScriptExecutionListCount; $RepositoryScriptExecutionListIndex++)
@@ -389,7 +391,7 @@ Switch (Test-ProcessElevationStatus)
                                                                       $StartProcessWithOutputParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
                                                                         $StartProcessWithOutputParameters.FilePath = "powershell.exe"
                                                                         $StartProcessWithOutputParameters.ArgumentList = New-Object -TypeName 'System.Collections.Generic.List[String]'
-                                                                          $StartProcessWithOutputParameters.ArgumentList.Add('-ExecutionPolicy Bypass')
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add("-ExecutionPolicy '$($CurrentExecutionPolicy)'")
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NonInteractive')
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NoProfile')
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NoLogo')
@@ -419,7 +421,7 @@ Switch (Test-ProcessElevationStatus)
                                                                                   }
                                                                             }
 
-                                                                          $LastArgumentIndex = $StartProcessWithOutputParameters.ArgumentList.Count - 1
+                                                                          $LastArgumentIndex = $StartProcessWithOutputParameters.ArgumentList.ToArray().GetUpperBound(0)
                                                                       
                                                                           $LastArgumentOriginalValue = $StartProcessWithOutputParameters.ArgumentList[$($LastArgumentIndex)]
                                                                       
@@ -435,6 +437,7 @@ Switch (Test-ProcessElevationStatus)
                                                                         $StartProcessWithOutputParameters.CreateNoWindow = $True
                                                                         $StartProcessWithOutputParameters.ExecutionTimeout = [System.TimeSpan]::FromMinutes(30)
                                                                         $StartProcessWithOutputParameters.ExecutionTimeoutInterval = [System.TimeSpan]::FromSeconds(30)
+                                                                        $StartProcessWithOutputParameters.SecureArgumentList = $True
                                                                         $StartProcessWithOutputParameters.Verbose = $True
 
                                                                       $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to execute repository script $($RepositoryScriptExecutionListCounter) of $($RepositoryScriptExecutionListCount). Please Wait..."
@@ -443,7 +446,7 @@ Switch (Test-ProcessElevationStatus)
                                                                       $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Path: $($RepositoryScriptExecution.DestinationPath.FullName)"
                                                                       Write-Verbose -Message ($LoggingDetails.LogMessage) -Verbose
 
-                                                                      #$StartProcessWithOutputResult = Start-ProcessWithOutput @StartProcessWithOutputParameters
+                                                                      $StartProcessWithOutputResult = Start-ProcessWithOutput @StartProcessWithOutputParameters
                                                                   }
 
                                                                 Default
