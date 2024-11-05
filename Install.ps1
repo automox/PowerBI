@@ -373,9 +373,7 @@ Switch (Test-ProcessElevationStatus)
                                   Switch ($RepositoryScriptExecutionListCount -gt 0)
                                     {
                                         {($_ -eq $True)}
-                                          {
-                                              $CurrentExecutionPolicy = Get-ExecutionPolicy -Scope Process
-                                              
+                                          {                                              
                                               $RepositoryScriptExecutionListCounter = 1
 
                                               For ($RepositoryScriptExecutionListIndex = 0; $RepositoryScriptExecutionListIndex -lt $RepositoryScriptExecutionListCount; $RepositoryScriptExecutionListIndex++)
@@ -391,7 +389,7 @@ Switch (Test-ProcessElevationStatus)
                                                                       $StartProcessWithOutputParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'
                                                                         $StartProcessWithOutputParameters.FilePath = "powershell.exe"
                                                                         $StartProcessWithOutputParameters.ArgumentList = New-Object -TypeName 'System.Collections.Generic.List[String]'
-                                                                          $StartProcessWithOutputParameters.ArgumentList.Add("-ExecutionPolicy '$($CurrentExecutionPolicy)'")
+                                                                          $StartProcessWithOutputParameters.ArgumentList.Add("-ExecutionPolicy 'Bypass'")
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NonInteractive')
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NoProfile')
                                                                           $StartProcessWithOutputParameters.ArgumentList.Add('-NoLogo')
@@ -513,10 +511,8 @@ Switch (Test-ProcessElevationStatus)
         {
             [System.IO.FileInfo]$ScriptPath = "$($MyInvocation.MyCommand.Path)"
 
-            $CurrentExecutionPolicy = Get-ExecutionPolicy -Scope Process
-
             $ArgumentList = New-Object -TypeName 'System.Collections.Generic.List[String]'
-              $ArgumentList.Add("-ExecutionPolicy $($CurrentExecutionPolicy)")
+              $ArgumentList.Add("-ExecutionPolicy 'Bypass'")
               $ArgumentList.Add('-NoProfile')
               $ArgumentList.Add('-NoExit')
               $ArgumentList.Add('-NoLogo')
