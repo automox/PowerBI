@@ -435,7 +435,7 @@ Switch (Test-ProcessElevationStatus)
                                                                         $StartProcessWithOutputParameters.CreateNoWindow = $True
                                                                         $StartProcessWithOutputParameters.ExecutionTimeout = [System.TimeSpan]::FromMinutes(30)
                                                                         $StartProcessWithOutputParameters.ExecutionTimeoutInterval = [System.TimeSpan]::FromSeconds(30)
-                                                                        $StartProcessWithOutputParameters.SecureArgumentList = $True
+                                                                        $StartProcessWithOutputParameters.SecureArgumentList = $False
                                                                         $StartProcessWithOutputParameters.Verbose = $True
 
                                                                       $LoggingDetails.LogMessage = "$($GetCurrentDateTimeMessageFormat.Invoke()) - Attempting to execute repository script $($RepositoryScriptExecutionListCounter) of $($RepositoryScriptExecutionListCount). Please Wait..."
