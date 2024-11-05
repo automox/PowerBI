@@ -400,7 +400,7 @@ Function Get-GitRepositoryListing
                               A valid hash algorithm. SHA256 will be used by default.
           
                               .EXAMPLE
-                              Invoke-FileHashCalculation -Path "$($Env:SystemDrive)\Users\Public\Documents\MyFile.txt" -Algorithm 'SHA256'
+                              Invoke-FileHashCalculation -Path "$($Env:SystemDrive)\Users\Public\Documents\MyFile.txt"
           
                               .EXAMPLE
                               $InvokeFileHashCalculationParameters = New-Object -TypeName 'System.Collections.Specialized.OrderedDictionary'

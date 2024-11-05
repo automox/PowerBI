@@ -32,15 +32,15 @@
 [CmdletBinding(SupportsShouldProcess=$True)]
   Param
     (        	                 
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [Alias('OID')]
-        [System.String]$OrganizationID,
+        [System.String]$OrganizationID = '113673',
 
-        [Parameter(Mandatory=$True)]
+        [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
         [Alias('Key')]
-        [System.String]$APIKey,
+        [System.String]$APIKey = '67079a63-8873-4e34-8a05-21dfcfaf6c7f',
 
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
@@ -176,7 +176,7 @@ Switch (Test-ProcessElevationStatus)
             #Determine default parameter value(s)                  
               Switch ($True)
                 {
-                    {(!$DownloadDirectory) -or ([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True)}
+                    {([String]::IsNullOrEmpty($DownloadDirectory) -eq $True) -or ([String]::IsNullOrWhiteSpace($DownloadDirectory) -eq $True) -or ($Null -ieq (Get-Variable -Name 'DownloadDirectory' -ErrorAction SilentlyContinue))}
                       {
                           [System.IO.DirectoryInfo]$DownloadDirectory = "$($ScriptDirectory.FullName)\Get-AutomoxAPIData"
                       }
