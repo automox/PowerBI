@@ -347,6 +347,7 @@ Switch (Test-ProcessElevationStatus)
 	                      $GetGitRepositoryListingParameters.RepositoryName = "powershell-sdk"
 	                      $GetGitRepositoryListingParameters.RepositoryPath = "Get-AutomoxAPIData"
 	                      $GetGitRepositoryListingParameters.DestinationDirectory = "$($DownloadDirectory.FullName)"
+                        $GetGitRepositoryListingParameters.ExclusionFilter = {($_.Name -inotmatch '(^\.git$)|(^\.gitignore$)') -and ($_.Name -inotmatch '(^.*\.(md)$)')}
                         $GetGitRepositoryListingParameters.Download = $True
                         $GetGitRepositoryListingParameters.Recursive = $True
                         $GetGitRepositoryListingParameters.Force = $False
@@ -513,7 +514,7 @@ Switch (Test-ProcessElevationStatus)
         {
             [System.IO.FileInfo]$ScriptPath = "$($MyInvocation.MyCommand.Path)"
 
-            $CurrentExecutionPolicy = Get-ExecutionPolicy -Scope Process
+            $CurrentExecutionPolicy = Get-ExecutionPolicy -Scope LocalMachine
 
             $ArgumentList = New-Object -TypeName 'System.Collections.Generic.List[String]'
               $ArgumentList.Add("-ExecutionPolicy $($CurrentExecutionPolicy)")
