@@ -277,7 +277,7 @@ Function Get-GitRepositoryListing
 
                             {($Null -ieq $ExclusionFilter)}
                               {
-                                  [System.Management.Automation.ScriptBlock]$ExclusionFilter = {($_.Name -inotmatch '(^.{0,0}$)')}
+                                  [System.Management.Automation.ScriptBlock]$ExclusionFilter = {($_.Name -inotmatch '(^\.git$)|(^\.gitignore$)')}
                               }
                         }
 
